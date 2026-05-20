@@ -125,7 +125,8 @@ def receive_message(
         Blocked.sender == body.sender,
     ).first() is not None
     
-    if result["type"] == "scam" and result.get("confidence", 0) >= 0.95 and not is_blocked:
+    # ✅ UPDATED: Auto-block if confidence is 80% or higher (changed from 95%)
+    if result["type"] == "scam" and result.get("confidence", 0) >= 0.80 and not is_blocked:
         existing = db.query(Blocked).filter(
             Blocked.user_id == user.id,
             Blocked.sender == body.sender,
@@ -142,6 +143,7 @@ def receive_message(
             ))
         db.commit()
         is_blocked = True
+        logger.info(f"🔒 Auto-blocked {body.sender} with {int(result['confidence']*100)}% confidence")
     
     message = Message(
         user_id=user.id,
@@ -151,7 +153,7 @@ def receive_message(
         preview=cleaned_body[:80],
         type=result["type"],
         confidence=result.get("confidence", 0.0),
-        tags=json.dumps(all_tags),  # I-save as JSON string
+        tags=json.dumps(all_tags),
         is_blocked=is_blocked,
         is_read=False,
     )
@@ -179,7 +181,6 @@ def get_messages(
         query = query.filter(Message.type == type_filter)
     messages = query.order_by(Message.received_at.desc()).offset(skip).limit(limit).all()
     
-    # I-convert ang tags sa tanang messages
     for msg in messages:
         msg = convert_tags_to_list(msg)
     

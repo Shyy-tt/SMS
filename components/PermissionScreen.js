@@ -21,10 +21,17 @@ const PERMISSIONS = [
     iosPerm: null,
   },
   {
+    key: 'sendSms', // ✅ ADDED
+    label: 'Send SMS',
+    sub: 'Reply to messages',
+    androidPerm: PermissionsAndroid.PERMISSIONS.SEND_SMS,
+    iosPerm: null,
+  },
+  {
     key: 'notificationAccess',
     label: 'Notification Access',
     sub: 'Read SMS notifications (no default SMS app needed)',
-    androidPerm: 'notification_listener', // Special case
+    androidPerm: 'notification_listener',
     iosPerm: null,
   },
   {
@@ -40,19 +47,17 @@ export default function PermissionScreen({ onAgree }) {
   const [perms, setPerms] = useState({
     readSms: false,
     receiveSms: false,
+    sendSms: false, // ✅ ADDED
     notificationAccess: false,
     postNotifications: false,
   });
   const [requesting, setRequesting] = useState(false);
 
-  // Check if a permission is granted
   const checkPermission = async (permKey) => {
     const permConfig = PERMISSIONS.find(p => p.key === permKey);
     if (!permConfig || !permConfig.androidPerm) return false;
     
     if (permKey === 'notificationAccess') {
-      // Notification access can't be checked directly via PermissionsAndroid
-      // We'll assume false and let user enable manually
       return false;
     }
     
@@ -65,15 +70,13 @@ export default function PermissionScreen({ onAgree }) {
     }
   };
 
-  // Request a single permission
   const requestSinglePermission = async (permKey) => {
     const permConfig = PERMISSIONS.find(p => p.key === permKey);
     if (!permConfig) return false;
     
-    // Special handling for Notification Access
     if (permKey === 'notificationAccess') {
       await requestNotificationAccess();
-      return false; // User needs to enable manually
+      return false;
     }
     
     if (!permConfig.androidPerm) return false;
@@ -87,7 +90,6 @@ export default function PermissionScreen({ onAgree }) {
     }
   };
 
-  // Request Notification Listener Access
   const requestNotificationAccess = async () => {
     if (Platform.OS === 'android') {
       Alert.alert(
@@ -99,10 +101,8 @@ export default function PermissionScreen({ onAgree }) {
             text: 'Open Settings', 
             onPress: async () => {
               try {
-                // Open Notification Listener Settings
                 await Linking.sendIntent('android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS');
               } catch (e) {
-                // Fallback to regular settings
                 Linking.openSettings();
               }
             }
@@ -112,17 +112,12 @@ export default function PermissionScreen({ onAgree }) {
     }
   };
 
-  // Check if notification listener is enabled (simplified)
   const checkNotificationListener = async () => {
-    // For now, we'll trust user when they say it's enabled
-    // In production, you'd need a native module to check this
     return perms.notificationAccess;
   };
 
-  // Toggle permission (request when toggling on)
   const toggle = async (key) => {
     if (perms[key]) {
-      // Can't "un-grant" permissions easily, just update UI state
       setPerms(prev => ({ ...prev, [key]: false }));
     } else {
       setRequesting(true);
@@ -130,7 +125,6 @@ export default function PermissionScreen({ onAgree }) {
       setRequesting(false);
       
       if (granted || key === 'notificationAccess') {
-        // For notification access, we assume user will enable it
         setPerms(prev => ({ ...prev, [key]: true }));
       } else {
         Alert.alert(
@@ -145,7 +139,6 @@ export default function PermissionScreen({ onAgree }) {
     }
   };
 
-  // Request all permissions at once
   const requestAllPermissions = async () => {
     setRequesting(true);
     
@@ -153,7 +146,7 @@ export default function PermissionScreen({ onAgree }) {
     for (const perm of PERMISSIONS) {
       if (perm.key === 'notificationAccess') {
         await requestNotificationAccess();
-        results[perm.key] = true; // Assume user will enable
+        results[perm.key] = true;
       } else if (perm.androidPerm) {
         try {
           const granted = await PermissionsAndroid.request(perm.androidPerm);
@@ -168,13 +161,13 @@ export default function PermissionScreen({ onAgree }) {
       ...prev,
       readSms: results.readSms || false,
       receiveSms: results.receiveSms || false,
+      sendSms: results.sendSms || false, // ✅ ADDED
       postNotifications: results.postNotifications || false,
-      notificationAccess: true, // Assume user will enable
+      notificationAccess: true,
     }));
     
     setRequesting(false);
     
-    // Check if critical permissions are granted
     const hasSmsPerms = results.readSms || results.receiveSms;
     if (!hasSmsPerms) {
       Alert.alert(
@@ -190,12 +183,10 @@ export default function PermissionScreen({ onAgree }) {
   const grantedCount = Object.values(perms).filter(Boolean).length;
   const allGranted = grantedCount === PERMISSIONS.length;
 
-  // Handle continue - verify permissions before proceeding
   const handleContinue = async () => {
     if (!allGranted) {
       await requestAllPermissions();
     } else {
-      // Verify notification access is actually enabled
       const notifEnabled = await checkNotificationListener();
       if (!notifEnabled && perms.notificationAccess) {
         Alert.alert(
@@ -217,17 +208,13 @@ export default function PermissionScreen({ onAgree }) {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       <View style={s.inner}>
-        {/* Top label */}
         <Text style={s.eyebrow}>PERMISSIONS</Text>
-
-        {/* Title */}
         <Text style={s.title}>Allow access to{'\n'}your messages</Text>
         <Text style={s.subtitle}>
           Detectify needs the following permissions to scan and protect your SMS inbox.
           {Platform.OS === 'android' && '\n\n📱 No default SMS app required — we use Notification Access!'}
         </Text>
 
-        {/* Permission list */}
         <View style={s.list}>
           {PERMISSIONS.map((p) => {
             const granted = perms[p.key];
@@ -239,7 +226,6 @@ export default function PermissionScreen({ onAgree }) {
                 activeOpacity={0.7}
                 disabled={requesting}
               >
-                {/* Text */}
                 <View style={s.rowText}>
                   <Text style={[s.rowLabel, granted && s.rowLabelGranted]}>
                     {p.label}
@@ -252,7 +238,6 @@ export default function PermissionScreen({ onAgree }) {
                   </Text>
                 </View>
 
-                {/* Status indicator */}
                 <View style={[s.indicator, granted && s.indicatorGranted]}>
                   {granted && (
                     <View style={s.checkLine}>
@@ -266,7 +251,6 @@ export default function PermissionScreen({ onAgree }) {
           })}
         </View>
 
-        {/* Hint */}
         <Text style={s.hint}>
           {requesting 
             ? 'Requesting permissions...' 
@@ -275,7 +259,6 @@ export default function PermissionScreen({ onAgree }) {
               : `${grantedCount} of ${PERMISSIONS.length} granted — tap to allow`}
         </Text>
 
-        {/* Info box about Notification Access */}
         {!perms.notificationAccess && (
           <View style={s.infoBox}>
             <Text style={s.infoText}>
@@ -286,7 +269,6 @@ export default function PermissionScreen({ onAgree }) {
           </View>
         )}
 
-        {/* Button */}
         <TouchableOpacity
           style={[s.btn, (requesting || (!allGranted && grantedCount === 0)) && s.btnDisabled]}
           onPress={handleContinue}
@@ -320,7 +302,6 @@ const s = StyleSheet.create({
     paddingBottom: 32,
     justifyContent: 'center',
   },
-
   eyebrow: {
     fontSize: 11,
     fontWeight: '600',
@@ -341,7 +322,6 @@ const s = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 24,
   },
-
   list: {
     gap: 10,
     marginBottom: 16,
@@ -379,7 +359,6 @@ const s = StyleSheet.create({
   rowSubGranted: {
     color: '#047857',
   },
-
   indicator: {
     width: 22,
     height: 22,
@@ -395,7 +374,6 @@ const s = StyleSheet.create({
     backgroundColor: '#10B981',
     borderColor: '#10B981',
   },
-
   checkLine: {
     width: 12,
     height: 12,
@@ -420,14 +398,12 @@ const s = StyleSheet.create({
     left: 3,
     transform: [{ rotate: '-50deg' }],
   },
-
   hint: {
     fontSize: 12,
     color: '#9CA3AF',
     textAlign: 'center',
     marginBottom: 12,
   },
-
   infoBox: {
     backgroundColor: '#FEF3C7',
     borderRadius: 12,
@@ -442,7 +418,6 @@ const s = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-
   btn: {
     backgroundColor: '#4F46E5',
     paddingVertical: 15,

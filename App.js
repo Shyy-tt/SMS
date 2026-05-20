@@ -11,6 +11,7 @@ import MessagesScreen          from './components/MessagesScreen';
 import SpamScreen              from './components/SpamScreen';
 import BlockedScreen           from './components/BlockedScreen';
 import SettingsScreen          from './components/SettingsScreen';
+import ComposeScreen           from './components/ComposeScreen'; // ✅ ADD THIS
 import RNFS from 'react-native-fs';
 
 // Helper to save token to file for native module
@@ -60,11 +61,33 @@ const requestNotificationListenerAccess = () => {
 // Check if notification listener is enabled
 const checkNotificationListenerEnabled = async () => {
   if (Platform.OS === 'android') {
-    // You'll need a native module to check this
-    // For now, just request it
     requestNotificationListenerAccess();
   }
   return true;
+};
+
+// ✅ Request to become default SMS app
+const requestDefaultSmsApp = () => {
+  if (Platform.OS === 'android') {
+    Alert.alert(
+      'Set Detectify as Default SMS App',
+      'To fully block scam messages system-wide, please set Detectify as your default SMS app.\n\n' +
+      'This allows us to:\n' +
+      '✓ Block scam numbers completely\n' +
+      '✓ Prevent scam messages from reaching you\n' +
+      '✓ Send and receive messages\n\n' +
+      'You can always change it back in settings.',
+      [
+        { text: 'Not Now', style: 'cancel' },
+        { 
+          text: 'Open Settings', 
+          onPress: () => {
+            Linking.sendIntent('android.provider.Telephony.ACTION_CHANGE_DEFAULT');
+          }
+        }
+      ]
+    );
+  }
 };
 
 function Navigator() {
@@ -74,6 +97,7 @@ function Navigator() {
   // Check permissions on auth success
   const handleAuthSuccess = async () => {
     await checkNotificationListenerEnabled();
+    requestDefaultSmsApp(); // ✅ Ask to become default SMS app
     navigate('home');
   };
 
@@ -86,6 +110,7 @@ function Navigator() {
   if (screen === 'spam')               return <SpamScreen               onNavigate={navigate} />;
   if (screen === 'blocked')            return <BlockedScreen            onNavigate={navigate} />;
   if (screen === 'settings')           return <SettingsScreen           onNavigate={navigate} />;
+  if (screen === 'compose')            return <ComposeScreen            onNavigate={navigate} />; // ✅ ADD THIS
   return null;
 }
 
