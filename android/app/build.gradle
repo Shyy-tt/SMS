@@ -1,0 +1,8 @@
+// ✅ FIX: Exclude duplicate classes from support-v4
+configurations.all {
+    exclude group: 'com.android.support', module: 'support-v4'
+    resolutionStrategy {
+        force 'androidx.core:core:1.13.1'
+        force 'androidx.media:media:1.0.0'
+    }
+}
